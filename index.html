@@ -237,8 +237,22 @@
     let commandTimeout;
 
     const playVictorySound = () => {
-      const audio = new Audio('https://www.soundjay.com/button/beep-07.wav'); // Replace with your victory sound URL
-      audio.play();
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = 'triangle'; // Softer, celebratory sound
+      oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // Start at A4
+      oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.5); // Ramp up to A5
+
+      gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); // Start volume
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5); // Fade out
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.5); // Stop after 0.5 seconds
     };
 
     const playExplosionSound = () => {
@@ -424,6 +438,34 @@
 
     // Start the voice recognition
     startVoiceRecognition();
+
+    cells.forEach((cell, index) => {
+      cell.addEventListener('click', () => {
+        if (!cell.classList.contains('taken') && !isGameOver) {
+          cell.innerHTML = currentPlayer === 'X'
+            ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><line x1="10" y1="10" x2="90" y2="90" stroke="red" stroke-width="10"/><line x1="90" y1="10" x2="10" y2="90" stroke="red" stroke-width="10"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="blue" stroke-width="10" fill="none" /></svg>`;
+          cell.classList.add('taken');
+          gameState[index] = currentPlayer;
+
+          if (checkWinner(currentPlayer)) {
+            isGameOver = true;
+            winnerMessage.textContent = `Player ${currentPlayer} Wins!`;
+            winnerMessage.style.display = 'block';
+            playVictorySound();
+            triggerConfetti(currentPlayer);
+            drawMessage.style.display = 'none';
+          } else if (gameState.every(cell => cell !== null)) {
+            isGameOver = true;
+            winnerMessage.style.display = 'none';
+            drawMessage.style.display = 'block';
+          } else {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            turnIndicator.textContent = `Player ${currentPlayer}'s Turn`;
+          }
+        }
+      });
+    });
   </script>
 </body>
 </html>
