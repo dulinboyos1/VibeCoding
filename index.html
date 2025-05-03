@@ -93,6 +93,9 @@
     .draw-message {
       font-size: 3vmin;
       margin-bottom: 10px;
+      text-align: center;
+      position: relative; /* Ensure they are positioned relative to their container */
+      z-index: 10; /* Ensure they appear above other elements */
     }
 
     .winner-message,
@@ -184,13 +187,15 @@
 
     .left-panel {
       position: absolute;
-      left: 10px;
-      top: 10px;
+      top: 10px; /* Adjust to ensure it's visible */
+      left: 50%; /* Center horizontally */
+      transform: translateX(-50%); /* Center alignment */
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
-      align-items: flex-start;
+      align-items: center; /* Center align text */
       font-size: 2vmin;
+      z-index: 10; /* Ensure it appears above the game board */
     }
 
   </style>
@@ -433,6 +438,12 @@
       confettiContainer.style.display = 'none';
     };
 
+    const scheduleReset = () => {
+      setTimeout(() => {
+        resetGame();
+      }, 3000); // Delay of 3 seconds
+    };
+
     // Reset game on button click
     resetButton.addEventListener('click', resetGame);
 
@@ -455,10 +466,12 @@
             playVictorySound();
             triggerConfetti(currentPlayer);
             drawMessage.style.display = 'none';
+            scheduleReset(); // Schedule reset after a win
           } else if (gameState.every(cell => cell !== null)) {
             isGameOver = true;
             winnerMessage.style.display = 'none';
             drawMessage.style.display = 'block';
+            scheduleReset(); // Schedule reset after a draw
           } else {
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
             turnIndicator.textContent = `Player ${currentPlayer}'s Turn`;
