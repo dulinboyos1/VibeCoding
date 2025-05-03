@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice-Controlled Tic-Tac-Toe</title>
+  <style>
+    :root {
+      --bg-color: white;
+      --text-color: black;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #222;
+      --text-color: #eee;
+    }
+
+    body, html {
+      margin: 0;
+      height: 100%;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      flex-direction: row;
+    }
+
+    .game-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90vmin;
+      height: 90vmin;
+    }
+
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      width: 100%;
+      height: 100%;
+      gap: 5px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f0f0f0;
+      border: 2px solid #ccc;
+      text-align: center;
+      position: relative;
+      user-select: none;
+      transition: background-color 0.3s;
+    }
+
+    .cell.taken {
+      cursor: not-allowed;
+    }
+
+    .cell svg {
+      width: 60%;
+      height: 60%;
+      transition: transform 0.2s ease;
+    }
+
+    .cell.taken svg {
+      transform: scale(1.2);
+    }
+
+    .turn-indicator,
+    .winner-message,
+    .draw-message {
+      font-size: 3vmin;
+      margin-bottom: 10px;
+    }
+
+    .winner-message,
+    .draw-message {
+      color: #4CAF50;
+      display: none;
+    }
+
+    .reset-button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 2vmin;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .reset-button:hover {
+      background-color: #0056b3;
+    }
+
+    /* Confetti animation */
+    .confetti {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      pointer-events: none;
+    }
+
+    .confetti div {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background-color: red;
+      animation: confettiFall 3s infinite;
+    }
+
+    @keyframes confettiFall {
+      0% { transform: translate(0, 0) rotate(0); }
+      100% { transform: translate(500px, 500px) rotate(720deg); }
+    }
+
+    .left-panel {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+      font-size: 2vmin;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="game-wrapper">
+    <div class="left-panel">
+      <div class="turn-indicator">Player X's Turn</div>
+      <div class="winner-message">Player X Wins!</div>
+      <div class="draw-message">It's a Draw!</div>
+      <button class="reset-button" id="resetButton">Reset Game</button>
+    </div>
+    <div class="game-container">
+      <div class="cell" data-pos="top left" data-pos-alternate="left top"></div>
+      <div class="cell" data-pos="top middle" data-pos-alternate="middle top"></div>
+      <div class="cell" data-pos="top right" data-pos-alternate="right top"></div>
+      <div class="cell" data-pos="middle left" data-pos-alternate="left middle"></div>
+      <div class="cell" data-pos="middle middle" data-pos-alternate="middle middle"></div>
+      <div class="cell" data-pos="middle right" data-pos-alternate="right middle"></div>
+      <div class="cell" data-pos="bottom left" data-pos-alternate="left bottom"></div>
+      <div class="cell" data-pos="bottom middle" data-pos-alternate="middle bottom"></div>
+      <div class="cell" data-pos="bottom right" data-pos-alternate="right bottom"></div>
+    </div>
+    <div class="confetti" id="confetti"></div>
+  </div>
+
+  <script>
+    const gameContainer = document.querySelector('.game-container');
+    const cells = document.querySelectorAll('.cell');
+    const turnIndicator = document.querySelector('.turn-indicator');
+    const winnerMessage = document.querySelector('.winner-message');
+    const drawMessage = document.querySelector('.draw-message');
+    const resetButton = document.getElementById('resetButton');
+    const confettiContainer = document.getElementById('confetti');
+    const gameState = Array(9).fill(null);
+    let currentPlayer = 'X';
+    let isGameOver = false;
+    const winningCombinations = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+    let recognition;
+
+    const playVictorySound = () => {
+      const audio = new Audio('https://www.soundjay.com/button/beep-07.wav'); // Replace with your victory sound URL
+      audio.play();
+    };
+
+    const triggerConfetti = () => {
+      for (let i = 0; i < 100; i++) {
+        const confettiPiece = document.createElement('div');
+        confettiPiece.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        confettiPiece.style.animationDuration = `${Math.random() * 2 + 2}s`;
+        confettiPiece.style.animationDelay = `${Math.random() * 2}s`;
+        confettiContainer.appendChild(confettiPiece);
+      }
+      confettiContainer.style.display = 'block';
+    };
+
+    const startVoiceRecognition = () => {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("This browser doesn't support speech recognition.");
+        return;
+      }
+
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = true;
+      recognition.lang = 'en-US';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        const command = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+        handleVoiceCommand(command);
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === 'no-speech' || event.error === 'audio-capture') {
+          startVoiceRecognition(); // Restart recognition
+        }
+      };
+
+      recognition.start();
+    };
+
+    const handleVoiceCommand = (command) => {
+      const pos = getPositionFromCommand(command);
+      if (pos !== -1 && !cells[pos].classList.contains('taken') && !isGameOver) {
+        cells[pos].innerHTML = currentPlayer === 'X' ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="blue" stroke-width="10" fill="none" /></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><line x1="10" y1="10" x2="90" y2="90" stroke="red" stroke-width="10"/><line x1="90" y1="10" x2="10" y2="90" stroke="red" stroke-width="10"/></svg>`;
+        cells[pos].classList.add('taken');
+        gameState[pos] = currentPlayer;
+
+        if (checkWinner(currentPlayer)) {
+          isGameOver = true;
+          winnerMessage.textContent = `Player ${currentPlayer} Wins!`;
+          winnerMessage.style.display = 'block';
+          playVictorySound();
+          triggerConfetti();
+          drawMessage.style.display = 'none'; // Hide draw message if there's a winner
+        } else if (gameState.every(cell => cell !== null)) {
+          // Check for draw if no winner
+          isGameOver = true;
+          drawMessage.style.display = 'block';
+          winnerMessage.style.display = 'none';
+        } else {
+          currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+          turnIndicator.textContent = `Player ${currentPlayer}'s Turn`;
+        }
+      }
+    };
+
+    const getPositionFromCommand = (command) => {
+      if (command === 'middle' || command === 'center') command = 'middle middle'; // Special case for center
+      const pos = Array.from(cells).findIndex(cell => 
+        cell.getAttribute('data-pos') === command || cell.getAttribute('data-pos-alternate') === command
+      );
+      return pos !== -1 ? pos : -1;
+    };
+
+    const checkWinner = (player) => {
+      return winningCombinations.some(comb =>
+        comb.every(i => gameState[i] === player)
+      );
+    };
+
+    const drawWinningLine = (combination) => {
+      const [a, , c] = combination;
+      const rects = Array.from(cells).map(cell => cell.getBoundingClientRect());
+      const containerRect = gameContainer.getBoundingClientRect();
+      const start = rects[a];
+      const end = rects[c];
+      const x1 = start.left + start.width / 2 - containerRect.left;
+      const y1 = start.top + start.height / 2 - containerRect.top;
+      const x2 = end.left + end.width / 2 - containerRect.left;
+      const y2 = end.top + end.height / 2 - containerRect.top;
+
+      const length = Math.hypot(x2 - x1, y2 - y1);
+      const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+      const line = document.createElement('div');
+      line.classList.add('winner-line');
+      line.style.width = `${length}px`;
+      line.style.transform = `translate(${x1}px, ${y1}px) rotate(${angle}deg)`;
+
+      gameContainer.appendChild(line);
+    };
+
+    const resetGame = () => {
+      gameState.fill(null);
+      cells.forEach(cell => {
+        cell.innerHTML = '';
+        cell.classList.remove('taken');
+      });
+      currentPlayer = 'X';
+      isGameOver = false;
+      turnIndicator.textContent = `Player X's Turn`;
+      winnerMessage.style.display = 'none';
+      drawMessage.style.display = 'none';
+      confettiContainer.style.display = 'none';
+    };
+
+    // Reset game on button click
+    resetButton.addEventListener('click', resetGame);
+
+    // Start the voice recognition
+    startVoiceRecognition();
+  </script>
+</body>
+</html>
