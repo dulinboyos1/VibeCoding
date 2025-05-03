@@ -15,6 +15,20 @@
       --text-color: #eee;
     }
 
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #222;
+        --text-color: #eee;
+      }
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-color: white;
+        --text-color: black;
+      }
+    }
+
     body, html {
       margin: 0;
       height: 100%;
@@ -52,12 +66,12 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #f0f0f0;
-      border: 2px solid #ccc;
+      background-color: var(--bg-color);
+      border: 2px solid var(--text-color);
       text-align: center;
       position: relative;
       user-select: none;
-      transition: background-color 0.3s;
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
     .cell.taken {
@@ -109,21 +123,28 @@
       left: 0;
       width: 100%;
       height: 100%;
-      display: none;
       pointer-events: none;
+      overflow: hidden;
     }
 
-    .confetti div {
+    .confetti-piece {
       position: absolute;
-      width: 5px;
-      height: 5px;
+      width: 12px; /* Larger pieces */
+      height: 12px;
       background-color: red;
-      animation: confettiFall 3s infinite;
+      border-radius: 50%;
+      animation: explode 3s ease-out forwards; /* Lasts longer */
     }
 
-    @keyframes confettiFall {
-      0% { transform: translate(0, 0) rotate(0); }
-      100% { transform: translate(500px, 500px) rotate(720deg); }
+    @keyframes explode {
+      0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(var(--x), var(--y)) scale(0.8);
+        opacity: 0;
+      }
     }
 
     .left-panel {
@@ -184,15 +205,62 @@
       audio.play();
     };
 
+    const playExplosionSound = () => {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = 'sawtooth'; // Explosion-like sound
+      oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(20, audioContext.currentTime + 0.5);
+
+      gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.5);
+    };
+
     const triggerConfetti = () => {
-      for (let i = 0; i < 100; i++) {
-        const confettiPiece = document.createElement('div');
-        confettiPiece.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        confettiPiece.style.animationDuration = `${Math.random() * 2 + 2}s`;
-        confettiPiece.style.animationDelay = `${Math.random() * 2}s`;
-        confettiContainer.appendChild(confettiPiece);
+      const confettiContainer = document.getElementById('confetti');
+      confettiContainer.innerHTML = ''; // Clear previous confetti
+
+      const explosions = 3; // Number of explosions
+      const confettiCount = 150; // More pieces per explosion
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+
+      for (let e = 0; e < explosions; e++) {
+        setTimeout(() => {
+          playExplosionSound(); // Play explosion sound for each explosion
+
+          for (let i = 0; i < confettiCount; i++) {
+            const confettiPiece = document.createElement('div');
+            confettiPiece.classList.add('confetti-piece');
+
+            // Randomize explosion direction and color
+            const x = (Math.random() - 0.5) * screenWidth;
+            const y = (Math.random() - 0.5) * screenHeight;
+            const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+
+            confettiPiece.style.setProperty('--x', `${x}px`);
+            confettiPiece.style.setProperty('--y', `${y}px`);
+            confettiPiece.style.backgroundColor = color;
+
+            confettiContainer.appendChild(confettiPiece);
+          }
+
+          confettiContainer.style.display = 'block';
+        }, e * 1000); // Delay between explosions
       }
-      confettiContainer.style.display = 'block';
+
+      // Hide confetti after all explosions
+      setTimeout(() => {
+        confettiContainer.style.display = 'none';
+      }, explosions * 3000); // Adjust based on duration
     };
 
     const startVoiceRecognition = () => {
