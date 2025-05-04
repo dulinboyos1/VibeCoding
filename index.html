@@ -42,6 +42,21 @@
       flex-direction: row;
     }
 
+    .toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 10px 0;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      z-index: 20; /* Ensure it appears above the game board */
+    }
+
     .game-wrapper {
       position: relative;
       display: flex;
@@ -49,6 +64,7 @@
       align-items: center;
       width: 90vmin;
       height: 90vmin;
+      margin-top: 80px; /* Add margin to move the game board below the toolbar */
     }
 
     .game-container {
@@ -91,21 +107,16 @@
     .turn-indicator,
     .winner-message,
     .draw-message {
-      font-size: 3vmin;
-      margin-bottom: 10px;
+      font-size: 2vmin;
       text-align: center;
-      position: relative; /* Ensure they are positioned relative to their container */
-      z-index: 10; /* Ensure they appear above other elements */
     }
 
     .winner-message,
     .draw-message {
-      color: #4CAF50;
-      display: none;
+      display: none; /* Initially hidden */
     }
 
     .reset-button {
-      margin-top: 10px;
       padding: 10px 20px;
       font-size: 2vmin;
       cursor: pointer;
@@ -132,9 +143,9 @@
 
     .confetti-piece {
       position: absolute;
-      width: 20px; /* Larger pieces */
-      height: 20px;
-      animation: explode 3s ease-out forwards; /* Lasts longer */
+       width: 30px; /* Larger pieces */
+      height: 30px;
+      animation: explode 4s ease-out forwards; /* Lasts longer */
     }
 
     .confetti-piece.circle {
@@ -180,7 +191,7 @@
         opacity: 1;
       }
       100% {
-        transform: translate(var(--x), var(--y)) scale(0.8);
+        transform: translate(var(--x), var(--y)) scale(1.2); /* Slightly larger at the end */
         opacity: 0;
       }
     }
@@ -201,13 +212,13 @@
   </style>
 </head>
 <body>
+  <div class="toolbar">
+    <div class="turn-indicator">Player X's Turn</div>
+    <div class="winner-message">Player X Wins!</div>
+    <div class="draw-message">It's a Draw!</div>
+    <button class="reset-button" id="resetButton">Reset Game</button>
+  </div>
   <div class="game-wrapper">
-    <div class="left-panel">
-      <div class="turn-indicator">Player X's Turn</div>
-      <div class="winner-message">Player X Wins!</div>
-      <div class="draw-message">It's a Draw!</div>
-      <button class="reset-button" id="resetButton">Reset Game</button>
-    </div>
     <div class="game-container">
       <div class="cell" data-pos="top left" data-pos-alternate="left top"></div>
       <div class="cell" data-pos="top middle" data-pos-alternate="middle top"></div>
